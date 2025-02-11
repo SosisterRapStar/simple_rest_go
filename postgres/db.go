@@ -14,7 +14,7 @@ type postgres struct {
 	pool *pgxpool.Pool
 }
 
-func newPostgres() *postgres{
+func newPostgres() *postgres {
 	config, err := pgxpool.ParseConfig(appconfig.Config.DB.Url)
 	if err != nil {
 		fmt.Println("Error during pgx config creating")
@@ -22,7 +22,11 @@ func newPostgres() *postgres{
 	}
 	config.MaxConns = appconfig.Config.DB.PGXConfig.MaxConns
 	config.MinConns = appconfig.Config.DB.PGXConfig.MinConns
-	connPool, err := pgxpool.NewWithConfig(context.Background(), config)r
+	connPool, err := pgxpool.NewWithConfig(context.Background(), config)
+	if err != nil {
+		fmt.Println("Error occured during pool creating")
+		os.Exit(1)
+	}
 	return &postgres{pool: connPool}
 
 }
@@ -30,3 +34,5 @@ func newPostgres() *postgres{
 func (p *postgres) Close() {
 	p.pool.Close()
 }
+
+var Postgres *postgres = newPostgres()
