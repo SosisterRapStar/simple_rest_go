@@ -1,4 +1,4 @@
-package postgres
+package connection
 
 import (
 	"context"
@@ -10,11 +10,8 @@ import (
 )
 
 // postgres db adapter
-type postgres struct {
-	pool *pgxpool.Pool
-}
 
-func newPostgres() *postgres {
+func NewPool() *pgxpool.Pool {
 	config, err := pgxpool.ParseConfig(appconfig.Config.DB.Url)
 	if err != nil {
 		fmt.Println("Error during pgx config creating")
@@ -27,12 +24,8 @@ func newPostgres() *postgres {
 		fmt.Println("Error occured during pool creating")
 		os.Exit(1)
 	}
-	return &postgres{pool: connPool}
+	return connPool
 
 }
 
-func (p *postgres) Close() {
-	p.pool.Close()
-}
-
-var Postgres *postgres = newPostgres()
+// var db *Postgres = newPostgres()

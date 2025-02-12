@@ -1,6 +1,8 @@
 package domain
 
 import (
+	"context"
+
 	"github.com/google/uuid"
 )
 
@@ -19,4 +21,11 @@ func (e *ErrorCreatingNote) Error() string {
 		return e.msg
 	}
 	return "Erorr occured during: creating note object"
+}
+
+type NoteService interface {
+	CreateNote(ctx context.Context, note *Note) (uuid.UUID, error)
+	FindNote(ctx context.Context, id string) (*Note, error)
+	DeleteNote(ctx context.Context, id string) error
+	UpdateNote(ctx context.Context, upd Note) (*Note, error)
 }
