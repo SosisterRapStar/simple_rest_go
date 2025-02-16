@@ -25,7 +25,7 @@ func (e *ErrorCreatingNote) Error() string {
 
 type NoteService interface {
 	CreateNote(ctx context.Context, note *Note) (uuid.UUID, error)
-	FindNote(ctx context.Context, id string) (*Note, error)
+	GetNote(ctx context.Context, id string) (*Note, error)
 	DeleteNote(ctx context.Context, id string) error
 	UpdateNote(ctx context.Context, upd Note) (*Note, error)
 }

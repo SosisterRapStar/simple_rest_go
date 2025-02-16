@@ -52,7 +52,7 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Note, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error occurred getting connection from pool: %w", err)
+		return nil, fmt.Errorf("error occurred getting connection from pool: %w", err)
 
 	}
 	defer conn.Release()
@@ -77,3 +77,7 @@ func (pgs *PostgresService) DeleteNote(ctx context.Context, note *domain.Note) (
 func (pgs *PostgresService) UpdateNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {
 
 }
+
+
+
+type DeadORM

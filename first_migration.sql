@@ -6,5 +6,5 @@ CREATE TABLE notes.note (
     title VARCHAR(50),
     content TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 )
