@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var CURRENT_ENV string = "production"
+var CURRENT_ENV string = "test_env"
 
 type pgxConfig struct {
 	MinConns int32
@@ -23,7 +23,7 @@ type appConfig struct {
 }
 
 func New() *appConfig {
-	if err := godotenv.Load(fmt.Sprintf("../envs/.%s_env", CURRENT_ENV)); err != nil {
+	if err := godotenv.Load("envs/.test_env"); err != nil {
 		fmt.Print("No .env file found")
 	}
 	db_config := &dbConfig{

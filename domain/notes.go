@@ -2,18 +2,28 @@ package domain
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/google/uuid"
 )
 
 type Note struct {
-	Id      uuid.UUID
-	Title   string
-	Content string
+	Id      uuid.UUID `json:"id"`
+	Title   string    `json:"title"`
+	Content string    `json:"content"`
 }
 
-func NewNoteForReturn(id uuid.UUID, title string, content string) *Note {
-	return &Note{Id: id,
+type UpdateNote struct {
+	Title   *string
+	Content *string
+}
+
+func (n *Note) String() string {
+	return fmt.Sprintf("Note{Id: %s, Title: %s, Content: %s}", n.Id, n.Title, n.Content)
+}
+
+func NewNote(title string, content string) *Note {
+	return &Note{
 		Title:   title,
 		Content: content}
 }
@@ -30,8 +40,8 @@ func (e *ErrorCreatingNote) Error() string {
 }
 
 type NoteService interface {
-	CreateNote(ctx context.Context, note *Note) (uuid.UUID, error)
+	CreateNote(ctx context.Context, note *Note) (string, error)
 	GetNote(ctx context.Context, id string) (*Note, error)
-	DeleteNote(ctx context.Context, id string) error
+	DeleteNote(ctx context.Context, id string) (string, error)
 	UpdateNote(ctx context.Context, upd Note) (*Note, error)
 }
