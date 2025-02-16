@@ -4,7 +4,6 @@ import (
 	"context"
 	"first-proj/domain"
 	"fmt"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,23 +16,24 @@ type PostgresService struct {
 func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error occurred getting connection from pool: %w", err)
+		return err
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("Error occured during transaction opening: %w", err)
+		return err
 	}
 
 	tx.Begin(ctx)
 	id, err := uuid.NewV7()
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("Error occured during uuid creating: %w", err)
+		return err
 	}
 	note.Id = id
 	query := `INSERT INTO notes (id, title, content) VALUES ($1, $2, $3)`
+
 	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("error occurred during note insertion: %w", err)
@@ -42,31 +42,36 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, fmt.Errorf("error occurred during transaction commit: %w", err)
+		return uuid.Nil, err
 	}
 
 	return note.Id, nil
 
 }
 
+// vot bi suda contextniy manager
 func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Note, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error occurred getting connection from pool: %w", err)
+		return err
 
 	}
 	defer conn.Release()
-
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("Error occured during transaction opening: %w", err)
+		return err
 	}
-
-	tx.Begin(ctx)
-	id, err := uuid.NewV7()
+ 	node_id, err := uuid.FromString(id)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("Error occured during uuid creating: %w", err)
+		return err
 	}
+	row, err := tx.QueryRow(ctx, "SELECT id, title, content FROM notes WHERE id = $1", note_id)
+	if err != nil {
+		return err
+}
+
+
+	
 
 }
 

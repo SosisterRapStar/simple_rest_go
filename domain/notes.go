@@ -2,14 +2,17 @@ package domain
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 type Note struct {
-	Id      uuid.UUID
-	Title   string
-	Content string
+	Id        uuid.UUID
+	Title     string
+	Content   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type ErrorCreatingNote struct {

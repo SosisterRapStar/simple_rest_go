@@ -7,6 +7,7 @@ var (
 	Unauthorized = errors.New("Unauthorized")
 	Forbidden    = errors.New("Forbidden request")
 	NotFound     = errors.New("Not found")
+	GenericErr   = errors.New("Some strange error occured sorry")
 )
 
 type Error struct {
