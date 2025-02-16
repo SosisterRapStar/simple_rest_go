@@ -2,8 +2,10 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"first-proj/domain"
 	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,11 +28,12 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 		return err
 	}
 
-	tx.Begin(ctx)
 	id, err := uuid.NewV7()
+	
 	if err != nil {
 		return err
 	}
+
 	note.Id = id
 	query := `INSERT INTO notes (id, title, content) VALUES ($1, $2, $3)`
 
@@ -53,30 +56,46 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Note, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
+		return nil, err
+	}
+
+	defer conn.Release()
+
+	if err != nil {
+		return nil, err
+	}
+
+ 	
+	if err != nil {
+		return nil, err
+	}
+
+	note = &domain.Note{}
+	err := conn.QueryRow(ctx, "SELECT id, title, content FROM notes WHERE id = $1", note_id).Scan(&node.Id, &note.Title, &note.Content)
+	
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNoteNotFound
+		} 
+		return nil, err
+	}
+
+	return note, nil
+}
+
+func (pgs *PostgresService) DeleteNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {
+	conn, err := pgs.db.Acquire(ctx)
+	if err != nil {
 		return err
 
 	}
 	defer conn.Release()
+
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
 		return err
 	}
- 	node_id, err := uuid.FromString(id)
-	if err != nil {
-		return err
-	}
-	row, err := tx.QueryRow(ctx, "SELECT id, title, content FROM notes WHERE id = $1", note_id)
-	if err != nil {
-		return err
-}
-
-
 	
-
-}
-
-func (pgs *PostgresService) DeleteNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {
-
 }
 
 func (pgs *PostgresService) UpdateNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {

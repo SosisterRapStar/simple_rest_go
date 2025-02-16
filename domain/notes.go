@@ -2,17 +2,20 @@ package domain
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 type Note struct {
-	Id        uuid.UUID
-	Title     string
-	Content   string
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	Id      uuid.UUID
+	Title   string
+	Content string
+}
+
+func NewNoteForReturn(id uuid.UUID, title string, content string) *Note {
+	return &Note{Id: id,
+		Title:   title,
+		Content: content}
 }
 
 type ErrorCreatingNote struct {
