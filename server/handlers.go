@@ -9,21 +9,21 @@ type HTTPHandlersFabric struct {
 	NoteService domain.NoteService
 }
 
-func (fabric *HTTPHandlersFabric) CreateNote() http.Handler {
+func (fabric *HTTPHandlersFabric) CreateNote(w ResponseWriter, r *Request){
 	return ...
 }
 
 
-func (fabric *HTTPHandlersFabric) DeleteNote() http.Handler {
+func (fabric *HTTPHandlersFabric) DeleteNote(w ResponseWriter, r *Request){
+	ret
+}
+
+
+func (fabric *HTTPHandlersFabric) GetNoteById(w ResponseWriter, r *Request){
 	return ...
 }
 
 
-func (fabric *HTTPHandlersFabric) GetNoteById() http.Handler {
-	return ...
-}
-
-
-func (fabric *HTTPHandlersFabric) UpdateNote() http.Handler {
+func (fabric *HTTPHandlersFabric) UpdateNote(w ResponseWriter, r *Request){
 	return ...
 }
