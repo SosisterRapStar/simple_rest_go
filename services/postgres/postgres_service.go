@@ -4,12 +4,23 @@ import (
 	"context"
 	"errors"
 	"first-proj/domain"
+	"first-proj/services"
 	"fmt"
 	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// inplementation specific errors
+// only postgres knows what's happening
+// upper interfaces can not handle it so http will throw badrequest for example
+// CLI will exit and so on
+var (
+	PostgresTransactionError  = errors.New("...")
+	PostgresConnectionError   = errors.New("...")
+	PostgresIdontKnowWhyError = errors.New("...")
 )
 
 func NewPostgres(db *pgxpool.Pool) *PostgresService {
@@ -20,23 +31,23 @@ type PostgresService struct {
 	db *pgxpool.Pool
 }
 
-func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (uuid.UUID, error) {
+func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (string, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
 
 	id, err := uuid.NewV7()
 
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
 
 	note.Id = id
@@ -44,16 +55,16 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 
 	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
 	if err != nil {
-		return uuid.Nil, fmt.Errorf("error occurred during note insertion: %w", err)
+		return "", fmt.Errorf("error occurred during note insertion: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
 
-	return note.Id, nil
+	return note.Id.String(), nil
 
 }
 
@@ -73,7 +84,7 @@ func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Not
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNoteNotFound
+			return nil, services.ErrNoteNotFound // logic level error
 		}
 		return nil, err
 	}
@@ -81,34 +92,38 @@ func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Not
 	return note, nil
 }
 
-func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (uuid.UUID, error) {
+func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
+
 	note_id, _ := uuid.Parse(id)
+
 	_, err = tx.Exec(ctx, "DELETE FROM notes.note WHERE id = $1", note_id)
 	if err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
+
 	defer tx.Rollback(ctx)
 
 	if err := tx.Commit(ctx); err != nil {
-		return uuid.Nil, err
+		return "", err
 	}
 
-	return note_id, nil
+	return note_id.String(), nil
 
 }
 
 func (pgs *PostgresService) updateOldObj(old *domain.Note, upd *domain.UpdateNote) *domain.Note {
+	// n + 1 без ORM = кайф
 	updValue := reflect.ValueOf(upd).Elem()
 	oldValue := reflect.ValueOf(old).Elem()
 
@@ -143,7 +158,7 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	_, err = tx.Exec(ctx, "UPDATE notes.note SET title = $1, content = $2 WHERE id = $3", updated_value.Title, updated_value.Content, updated_value.Id)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNoteNotFound
+			return nil, services.ErrNoteNotFound // logic error level
 		}
 		return nil, err
 	}
