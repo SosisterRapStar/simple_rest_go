@@ -6,37 +6,39 @@ import (
 	"net/http"
 )
 
-type  HttpApi struct {
+type HttpApi struct {
 	NoteService domain.NoteService
 }
 
-type httpHandler func(http.ResponseWriter, *http.Request) error 
 
 
-
-func (api *HttpAppi)  CreateNote(w ResponseWriter, r *Request){
-	
+func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
+	return
 }
 
-
-func (api *HttpAppi)  DeleteNote(w ResponseWriter, r *Request) error{
+func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	context := context.Background()
-	id, err := fabric.NoteService.DeleteNote(context, id)
+	deleted_id, err := api.NoteService.DeleteNote(context.Background(), id)
 	if err != nil {
-		return err
-	} ?
-	w.Header().Set("Content-Type", "text/plain")
-	w.Write([]byte(id))
+		errorToSend := HandleServiceError(err)
+		http.Error(w, errorToSend.Details, errorToSend.Status)
+		return
+	}
 
 }
 
-
-func (api *HttpAppi)  GetNoteById(w ResponseWriter, r *Request){
-	id := r.PathValue("id")
+func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
+	// id := r.PathValue("id")
+	return
 }
 
+func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
+	// id := r.PathValue("id")
+	return
+}
 
-func (fabric *HttpApi) UpdateNote(w ResponseWriter, r *Request){
-	id := r.PathValue("id")
+func (api *HttpApi) parseJson(w http.ResponseWriter, r *http.Request)
+
+func (api *HttpApi) writeJson(w http.ResponseWriter, r *http.Request, data string) {
+	w.
 }

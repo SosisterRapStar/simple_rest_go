@@ -5,7 +5,6 @@ import (
 	"errors"
 	"first-proj/domain"
 	"first-proj/services"
-	"fmt"
 	"reflect"
 
 	"github.com/google/uuid"
@@ -17,12 +16,6 @@ import (
 // only postgres knows what's happening
 // upper interfaces can not handle it so http will throw badrequest for example
 // CLI will exit and so on
-var (
-	PostgresTransactionError  = errors.New("...")
-	PostgresConnectionError   = errors.New("...")
-	PostgresIdontKnowWhyError = errors.New("...")
-)
-
 func NewPostgres(db *pgxpool.Pool) *PostgresService {
 	return &PostgresService{db: db}
 }
@@ -34,20 +27,21 @@ type PostgresService struct {
 func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (string, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return "", err
+
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	id, err := uuid.NewV7()
 
 	if err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	note.Id = id
@@ -55,13 +49,13 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 
 	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
 	if err != nil {
-		return "", fmt.Errorf("error occurred during note insertion: %w", err)
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	defer tx.Rollback(ctx)
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	return note.Id.String(), nil
@@ -84,7 +78,7 @@ func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Not
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, services.ErrNoteNotFound // logic level error
+			return nil, services.NewServiceError(services.ErrInternalFailure, err) // logic level error
 		}
 		return nil, err
 	}
@@ -95,27 +89,27 @@ func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Not
 func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	note_id, _ := uuid.Parse(id)
 
 	_, err = tx.Exec(ctx, "DELETE FROM notes.note WHERE id = $1", note_id)
 	if err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	defer tx.Rollback(ctx)
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", err
+		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	return note_id.String(), nil
@@ -141,14 +135,14 @@ func (pgs *PostgresService) updateOldObj(old *domain.Note, upd *domain.UpdateNot
 func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNote, id string) (*domain.Note, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return nil, err
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	old_note, err := pgs.GetNote(ctx, id)
 	if err != nil {
@@ -157,15 +151,12 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	updated_value := pgs.updateOldObj(old_note, upd)
 	_, err = tx.Exec(ctx, "UPDATE notes.note SET title = $1, content = $2 WHERE id = $3", updated_value.Title, updated_value.Content, updated_value.Id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, services.ErrNoteNotFound // logic error level
-		}
-		return nil, err
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	defer tx.Rollback(ctx)
 
 	if err := tx.Commit(ctx); err != nil {
-		return nil, err
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	return updated_value, nil

@@ -4,7 +4,7 @@ import (
 	"context"
 	"first-proj/connection"
 	"first-proj/domain"
-	"first-proj/postgres"
+	"first-proj/services/postgres"
 	"fmt"
 )
 

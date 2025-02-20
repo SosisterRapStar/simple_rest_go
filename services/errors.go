@@ -10,11 +10,8 @@ var (
 	ErrInternalFailure = errors.New("Internal erorr")
 )
 
-// set fo erros for driving sides (higher level)
 type ServiceError struct {
-	// this error is app specific and valid for any transport, only transport (driving side) know how to handle it and what error code to use
-	appError error
-	// this is low level error, implementation specific error i.g. (MongoDB error, Redis Cache error, Postgres tx error)
+	appError    error
 	actualError error
 }
 

@@ -21,7 +21,7 @@ func HandleServiceError(err error) HttpApiError {
 		switch appError {
 		case services.ErrNoteNotFound:
 			apiError.Status = http.StatusNotFound
-			fmt.Println(serviceError.GetActualError()) // в будущем будет залогировано
+			fmt.Println(serviceError.GetActualError().Error()) // в будущем будет залогировано
 		}
 	}
 	return apiError
