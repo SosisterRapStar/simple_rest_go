@@ -37,6 +37,7 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 	if err != nil {
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
+	defer tx.Rollback(ctx)
 
 	id, err := uuid.NewV7()
 
@@ -51,7 +52,6 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 	if err != nil {
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
-	defer tx.Rollback(ctx)
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
@@ -98,6 +98,7 @@ func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, 
 	if err != nil {
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
+	defer tx.Rollback(ctx)
 
 	note_id, _ := uuid.Parse(id)
 
@@ -105,8 +106,6 @@ func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, 
 	if err != nil {
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
-
-	defer tx.Rollback(ctx)
 
 	if err := tx.Commit(ctx); err != nil {
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
@@ -144,6 +143,8 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	if err != nil {
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
+	defer tx.Rollback(ctx)
+
 	old_note, err := pgs.GetNote(ctx, id)
 	if err != nil {
 		return nil, err
@@ -153,7 +154,6 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	if err != nil {
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
-	defer tx.Rollback(ctx)
 
 	if err := tx.Commit(ctx); err != nil {
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
