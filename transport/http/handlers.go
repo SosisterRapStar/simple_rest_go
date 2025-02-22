@@ -16,16 +16,16 @@ type HttpApi struct {
 
 func (api *HttpApi) setCommonHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store, max-age=0")
-	W.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Pragma", "no-cache")
 	w.Header().Set("Content-Type", "application/json")
 }
 
-func (api *HttpApi) checkContentType(w http.ResponseWriter) error {
+func (api *HttpApi) checkContentType(r *http.Request) error {
 	ct := r.Header.Get("Content-Type")
 	if ct != "" {
 		mediaType := strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
 		if mediaType != "application/json" {
-			return errors.New("Content type header is not application/json")
+			return errors.New("content type header is not application/json")
 		}
 	}
 	return nil
@@ -60,7 +60,7 @@ func (api *HttpApi) decodeJson(decoder *json.Decoder, v any) *HttpApiError {
 }
 
 func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
-	if err := api.checkContentType(w); err != nil {
+	if err := api.checkContentType(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
@@ -83,7 +83,12 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	return
+	w.WriteHeader(http.StatusOK)
+	response := map[string]string{"message": "Note was deleted", "id": note_id}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+		return
+	}
 
 }
 
@@ -95,6 +100,7 @@ func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorToSend.Details, errorToSend.Status)
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 
 	w.WriteHeader(http.StatusOK)
 	response := map[string]string{"message": "Note was deleted", "id": deleted_id}
@@ -113,6 +119,7 @@ func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	api.setCommonHeaders(w)
+	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(note); err != nil {
 		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 		return
@@ -120,17 +127,32 @@ func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
+	if err := api.checkContentType(r); err != nil {
+		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
+	}
 	id := r.PathValue("id")
-	var note domain.Note
-
-	if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
-		http.Error(w, `{"error": "Failed to decode request"}`, http.StatusInternalServerError)
+	r.Body = http.MaxBytesReader(w, r.Body, 1048576)
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	var updNote domain.UpdateNote
+	if err := api.decodeJson(dec, &updNote); err != nil {
+		http.Error(w, err.Details, err.Status)
 		return
 	}
-	note, err := api.NoteService.UpdateNote(r.Context(), note)
+	if err := dec.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		http.Error(w, "Request should contain only one json structure", http.StatusBadRequest)
+		return
+	}
+
+	note, err := api.NoteService.UpdateNote(r.Context(), &updNote, id)
 	if err != nil {
-		sendErr := HandleServiceError(err)
-		http.Error(w, sendErr.Details, sendErr.Status)
+		sendError := HandleServiceError(err)
+		http.Error(w, sendError.Details, sendError.Status)
+		return
+	}
+	api.setCommonHeaders(w)
+	if err := json.NewEncoder(w).Encode(note); err != nil {
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 		return
 	}
 

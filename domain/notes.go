@@ -43,5 +43,5 @@ type NoteService interface {
 	CreateNote(ctx context.Context, note *Note) (string, error)
 	GetNote(ctx context.Context, id string) (*Note, error)
 	DeleteNote(ctx context.Context, id string) (string, error)
-	UpdateNote(ctx context.Context, upd Note) (*Note, error)
+	UpdateNote(ctx context.Context, upd *UpdateNote, id string) (*Note, error)
 }
