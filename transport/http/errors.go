@@ -12,6 +12,13 @@ type HttpApiError struct {
 	Details string
 }
 
+func NewHttpApiError(status int, details string) *HttpApiError {
+	return &HttpApiError{
+		Status:  status,
+		Details: details,
+	}
+}
+
 func HandleServiceError(err error) HttpApiError {
 	var apiError HttpApiError
 	var serviceError services.ServiceError
