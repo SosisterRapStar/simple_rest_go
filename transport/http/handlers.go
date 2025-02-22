@@ -17,7 +17,6 @@ type HttpApi struct {
 func (api *HttpApi) setCommonHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store, max-age=0")
 	w.Header().Set("Pragma", "no-cache")
-	w.Header().Set("Content-Type", "application/json")
 }
 
 func (api *HttpApi) checkContentType(r *http.Request) error {
