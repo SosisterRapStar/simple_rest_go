@@ -24,6 +24,8 @@ func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errorToSend.Details, errorToSend.Status)
 		return
 	}
+	w.WriteHeader(http.StatusOK)
+	// W.Write()
 
 }
 

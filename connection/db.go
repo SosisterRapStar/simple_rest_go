@@ -9,8 +9,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// postgres db adapter
-
+// there is no any abstraction on pgx pool so
+// there is no any Open/Close interface methods, so the dependency provider should close the pool "manualy"
+// using pgx functions intself after Service work was done
 func NewPool() *pgxpool.Pool {
 	config, err := pgxpool.ParseConfig(appconfig.Config.DB.Url)
 	if err != nil {
@@ -27,5 +28,3 @@ func NewPool() *pgxpool.Pool {
 	return connPool
 
 }
-
-// var db *Postgres = newPostgres()
