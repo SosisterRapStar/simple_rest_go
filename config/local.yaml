@@ -1,0 +1,8 @@
+env: "local"
+http_server:
+  address: "0.0.0.0:8080"
+storage:
+  postgres:
+    url: "postgres://test_user_app:1234@192.168.56.6:5432/test_db"
+    max_conns: 12
+    min_conns: 3

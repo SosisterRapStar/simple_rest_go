@@ -1,48 +1,47 @@
 package appconfig
 
 import (
-	"fmt"
+	"log"
 	"os"
 
-	"github.com/joho/godotenv"
+	"github.com/ilyakaznacheev/cleanenv"
 )
 
-var CURRENT_ENV string = "test_env"
-
-type pgxConfig struct {
-	MinConns int32
-	MaxConns int32
-}
-type dbConfig struct {
-	PGXConfig *pgxConfig
-	Url       string
+type Server struct {
+	Address string `yaml:"address" env-required:"true"`
 }
 
-type appConfig struct {
-	DB *dbConfig
+type Postgres struct {
+	Url      string `yaml:"url" env-required:"true"`
+	MaxConns int    `yaml:"max_conns" env-default:"10"`
+	MinConns int    `yaml:"min_conns" env-default:"3"`
 }
 
-func New() *appConfig {
-	if err := godotenv.Load("envs/.test_env"); err != nil {
-		fmt.Print("No .env file found")
-	}
-	db_config := &dbConfig{
-		Url: getEnv("DB_URL", ""), PGXConfig: &pgxConfig{
-			MinConns: 2,
-			MaxConns: 10,
-		}}
-	return &appConfig{
-		DB: db_config,
+type Storage struct {
+	Postgres `yaml:"postgres`
+}
+
+type Config struct {
+	Env     string `yaml:"env" env-default:"local"`
+	Server  `yaml:"http_server"`
+	Storage `yaml:"storage"`
+}
+
+func MustLoad() *Config {
+	configPath := os.Getenv(os.Getenv("CONFIG_PATH"))
+	if configPath == "" {
+		log.Fatal("Config is not set")
 	}
 
-}
-
-func getEnv(envVar string, defaultVar string) string {
-	if envVar, exists := os.LookupEnv(envVar); exists {
-		return envVar
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+		log.Fatalf("Config file %s doesn't exist", configPath)
 	}
-	fmt.Println("Value of env var was not found, use default var")
-	return defaultVar
-}
 
-var Config *appConfig = New()
+	var cfg Config
+
+	if err := cleanenv.ReadConfig(configPath, &cfg); err != nil {
+		log.Fatal("Can not read config")
+	}
+
+	return &cfg
+}
