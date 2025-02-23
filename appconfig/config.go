@@ -18,7 +18,7 @@ type Postgres struct {
 }
 
 type Storage struct {
-	Postgres `yaml:"postgres`
+	Postgres `yaml:"postgres"`
 }
 
 type Config struct {
@@ -28,7 +28,7 @@ type Config struct {
 }
 
 func MustLoad() *Config {
-	configPath := os.Getenv(os.Getenv("CONFIG_PATH"))
+	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
 		log.Fatal("Config is not set")
 	}
