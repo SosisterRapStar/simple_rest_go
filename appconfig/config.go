@@ -2,9 +2,15 @@ package appconfig
 
 import (
 	"log"
+	"log/slog"
 	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
+)
+
+const (
+	envLocal = "local"
+	envDev   = "dev"
 )
 
 type Server struct {
@@ -44,4 +50,16 @@ func MustLoad() *Config {
 	}
 
 	return &cfg
+}
+
+func setupLogger(env string) *slog.Logger {
+	var log *slog.Logger
+
+	switch env {
+	case envLocal:
+		log = slog.New(
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+		)
+	}
+	return log
 }
