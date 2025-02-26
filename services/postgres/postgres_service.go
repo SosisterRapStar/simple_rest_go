@@ -170,55 +170,44 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 	}
 	defer conn.Release()
 
-	var paginateQuery string
 	if *filter.Limit > 100 {
 		return nil, 0, services.NewServiceError(services.ErrTooManyRowsToFetch, services.ErrTooManyRowsToFetch)
 	}
+
+	var paginateQuery string
+	var rows pgx.Rows
+	var args []interface{}
+
 	if filter.NextPageToken == nil {
-		paginateQuery = "SELECT id, title, content, COUNT(*) FROM notes.note FETCH FIRST $1 ROWS ONLY"
-		var counter int
-		rows, err := conn.Query(ctx, paginateQuery, *filter.Limit)
-		if err != nil {
-			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
-		}
-		var notes []*domain.Note
-		defer rows.Close()
-		for rows.Next() {
-			var note domain.Note
-			err := rows.Scan(&note.Id, &note.Title, &note.Content, &counter)
-			if err != nil {
-				return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
-			}
-			notes = append(notes, &note)
-		}
-		err = rows.Err()
-		if err != nil {
-			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
-		}
-		return notes, counter, nil
+		paginateQuery = "SELECT id, title, content FROM notes.note FETCH FIRST $1 ROWS ONLY"
+		args = []interface{}{*filter.Limit}
 	} else {
-		token, _ := uuid.Parse(*filter.NextPageToken)
-		paginateQuery = "SELECT id, title, content, COUNT(*) FROM notes.note WHERE notes.note < $1 FETCH NEXT $2 ROWS ONLY"
-		rows, err := conn.Query(ctx, paginateQuery, token, filter.Limit)
+		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id > $1 FETCH NEXT $2 ROWS ONLY"
+		token, err := uuid.Parse(*filter.NextPageToken)
 		if err != nil {
 			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
 		}
-		var notes []*domain.Note
-		var counter int
-		defer rows.Close()
-		for rows.Next() {
-			var note domain.Note
-			err := rows.Scan(&note.Id, &note.Title, &note.Content, &counter)
-			if err != nil {
-				return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
-			}
-			notes = append(notes, &note)
-		}
-		err = rows.Err()
-		if err != nil {
-			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
-		}
-		return notes, counter, nil
+		args = []interface{}{token, *filter.Limit}
 	}
+
+	rows, err = conn.Query(ctx, paginateQuery, args...)
+	if err != nil {
+		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+	}
+	var notes []*domain.Note
+	defer rows.Close()
+	for rows.Next() {
+		var note domain.Note
+		err := rows.Scan(&note.Id, &note.Title, &note.Content)
+		if err != nil {
+			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		}
+		notes = append(notes, &note)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+	}
+	return notes, len(notes), nil
 
 }
