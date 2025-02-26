@@ -12,13 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type NotesFilter struct {
-	ID         *int
-	InviteCode *string
-	Offset     int
-	Limit      int
-}
-
 // inplementation specific errors
 // only postgres knows what's happening
 // upper interfaces can not handle it so http will throw badrequest for example
@@ -169,6 +162,63 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	return updated_value, nil
 }
 
-func (pgs *PostgresService) FindNotes(ctx context.Context) ([]domain.Note, error) {
+func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.PaginateFilter) ([]*domain.Note, int, error) {
+	conn, err := pgs.db.Acquire(ctx)
+	if err != nil {
+		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+
+	}
+	defer conn.Release()
+
+	var paginateQuery string
+	if *filter.Limit > 100 {
+		return nil, 0, services.NewServiceError(services.ErrTooManyRowsToFetch, services.ErrTooManyRowsToFetch)
+	}
+	if filter.NextPageToken == nil {
+		paginateQuery = "SELECT id, title, content, COUNT(*) FROM notes.note FETCH FIRST $1 ROWS ONLY"
+		var counter int
+		rows, err := conn.Query(ctx, paginateQuery, *filter.Limit)
+		if err != nil {
+			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		}
+		var notes []*domain.Note
+		defer rows.Close()
+		for rows.Next() {
+			var note domain.Note
+			err := rows.Scan(&note.Id, &note.Title, &note.Content, &counter)
+			if err != nil {
+				return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+			}
+			notes = append(notes, &note)
+		}
+		err = rows.Err()
+		if err != nil {
+			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		}
+		return notes, counter, nil
+	} else {
+		token, _ := uuid.Parse(*filter.NextPageToken)
+		paginateQuery = "SELECT id, title, content, COUNT(*) FROM notes.note WHERE notes.note < $1 FETCH NEXT $2 ROWS ONLY"
+		rows, err := conn.Query(ctx, paginateQuery, token, filter.Limit)
+		if err != nil {
+			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		}
+		var notes []*domain.Note
+		var counter int
+		defer rows.Close()
+		for rows.Next() {
+			var note domain.Note
+			err := rows.Scan(&note.Id, &note.Title, &note.Content, &counter)
+			if err != nil {
+				return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+			}
+			notes = append(notes, &note)
+		}
+		err = rows.Err()
+		if err != nil {
+			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		}
+		return notes, counter, nil
+	}
 
 }

@@ -5,9 +5,10 @@ import (
 )
 
 var (
-	ErrNoteNotFound    = errors.New("Service did not find such note")
-	ErrBadRequest      = errors.New("Bad request")
-	ErrInternalFailure = errors.New("Internal erorr")
+	ErrNoteNotFound       = errors.New("Service did not find such note")
+	ErrBadRequest         = errors.New("Bad request")
+	ErrInternalFailure    = errors.New("Internal erorr")
+	ErrTooManyRowsToFetch = errors.New("Too many rows to fetch")
 )
 
 type ServiceError struct {
