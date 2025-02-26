@@ -157,6 +157,10 @@ func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (api *HttpApi) FindNotes(w http.ResponseWriter, r *http.Request) {
+
+}
+
 // func (api *HttpApi) parseJson(w http.ResponseWriter, r *http.Request) {
 
 // }

@@ -12,6 +12,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type NotesFilter struct {
+	ID         *int
+	InviteCode *string
+	Offset     int
+	Limit      int
+}
+
 // inplementation specific errors
 // only postgres knows what's happening
 // upper interfaces can not handle it so http will throw badrequest for example
@@ -160,4 +167,8 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	}
 
 	return updated_value, nil
+}
+
+func (pgs *PostgresService) FindNotes(ctx context.Context) ([]domain.Note, error) {
+
 }
