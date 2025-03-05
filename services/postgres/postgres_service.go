@@ -25,9 +25,11 @@ type PostgresService struct {
 }
 
 func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (string, error) {
+	if err := note.Validate(); err != nil {
+		return "", services.NewServiceError(err, err)
+	}
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
@@ -132,6 +134,11 @@ func (pgs *PostgresService) updateOldObj(old *domain.Note, upd *domain.UpdateNot
 }
 
 func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNote, id string) (*domain.Note, error) {
+	if upd.Title != nil {
+		if *upd.Title == "" {
+			return nil, services.NewServiceError(domain.ErrNoteValidation, domain.ErrNoteValidation)
+		}
+	}
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)

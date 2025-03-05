@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"fmt"
@@ -9,14 +9,13 @@ import (
 
 type Server struct {
 	server *http.Server
-	router *http.ServeMux
-	api    *HttpApi
+	Router *http.ServeMux
 }
 
-func NewServer() Server {
+func NewServer(address string) Server {
 	router := http.NewServeMux()
 	server := http.Server{
-		Addr:           "0.0.0.0:8888",
+		Addr:           address,
 		Handler:        router,
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   10 * time.Second,
@@ -25,7 +24,7 @@ func NewServer() Server {
 	}
 	return Server{
 		server: &server,
-		router: router,
+		Router: router,
 	}
 }
 
@@ -45,9 +44,4 @@ func (s *Server) Stop() {
 		os.Exit(1)
 	}
 	fmt.Println("Server is stopped")
-}
-
-func (s *Server) RegisterRouters() {
-	s.router.HandleFunc("/", s.api.CreateNote)
-	// ...
 }

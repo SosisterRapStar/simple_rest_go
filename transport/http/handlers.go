@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"encoding/json"
@@ -11,7 +11,11 @@ import (
 )
 
 type HttpApi struct {
-	NoteService domain.NoteService
+	noteService domain.NoteService
+}
+
+func (api *HttpApi) NewHTTPAPI(noteService domain.NoteService) *HttpApi {
+	return &HttpApi{noteService: noteService}
 }
 
 func (api *HttpApi) setCommonHeaders(w http.ResponseWriter) {
@@ -74,7 +78,8 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Request should contain only one json structure", http.StatusBadRequest)
 		return
 	}
-	note_id, err := api.NoteService.CreateNote(r.Context(), &note)
+
+	note_id, err := api.noteService.CreateNote(r.Context(), &note)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)
@@ -93,7 +98,7 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 
 func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	deleted_id, err := api.NoteService.DeleteNote(r.Context(), id)
+	deleted_id, err := api.noteService.DeleteNote(r.Context(), id)
 	if err != nil {
 		errorToSend := HandleServiceError(err)
 		http.Error(w, errorToSend.Details, errorToSend.Status)
@@ -111,7 +116,7 @@ func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 
 func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	note, err := api.NoteService.GetNote(r.Context(), id)
+	note, err := api.noteService.GetNote(r.Context(), id)
 	if err != nil {
 		errorToSend := HandleServiceError(err)
 		http.Error(w, errorToSend.Details, errorToSend.Status)
@@ -143,7 +148,7 @@ func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note, err := api.NoteService.UpdateNote(r.Context(), &updNote, id)
+	note, err := api.noteService.UpdateNote(r.Context(), &updNote, id)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)

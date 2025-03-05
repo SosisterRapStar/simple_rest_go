@@ -2,6 +2,7 @@ package domain
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/google/uuid"
@@ -39,12 +40,24 @@ func (e *ErrorCreatingNote) Error() string {
 	return "Erorr occured during: creating note object"
 }
 
+type NoteUseCases interface {
+}
+
 type NoteService interface {
 	CreateNote(ctx context.Context, note *Note) (string, error)
 	GetNote(ctx context.Context, id string) (*Note, error)
 	DeleteNote(ctx context.Context, id string) (string, error)
 	UpdateNote(ctx context.Context, upd *UpdateNote, id string) (*Note, error)
-	FindNotes(ctx context.Context) ([]*Note, int, error)
+	FindNotes(ctx context.Context, filter *PaginateFilter) ([]*Note, int, error)
+}
+
+var ErrNoteValidation = errors.New("title required for note")
+
+func (note *Note) Validate() error {
+	if note.Title == "" {
+		return ErrNoteValidation
+	}
+	return nil
 }
 
 type PaginateFilter struct {

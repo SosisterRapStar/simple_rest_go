@@ -1,7 +1,8 @@
-package server
+package http
 
 import (
 	"errors"
+	"first-proj/domain"
 	"first-proj/services"
 	"fmt"
 	"net/http"
@@ -29,6 +30,8 @@ func HandleServiceError(err error) HttpApiError {
 		case services.ErrNoteNotFound:
 			apiError.Status = http.StatusNotFound
 			fmt.Println(serviceError.GetActualError().Error()) // в будущем будет залогировано
+		case domain.ErrNoteValidation:
+			apiError.Status = http.StatusBadRequest
 		}
 	}
 	return apiError
