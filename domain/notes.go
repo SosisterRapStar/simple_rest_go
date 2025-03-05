@@ -4,14 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-
-	"github.com/google/uuid"
 )
 
 type Note struct {
-	Id      uuid.UUID `json:"id"`
-	Title   string    `json:"title"`
-	Content string    `json:"content"`
+	Id      string `json:"id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 type UpdateNote struct {
@@ -48,7 +46,7 @@ type NoteService interface {
 	GetNote(ctx context.Context, id string) (*Note, error)
 	DeleteNote(ctx context.Context, id string) (string, error)
 	UpdateNote(ctx context.Context, upd *UpdateNote, id string) (*Note, error)
-	FindNotes(ctx context.Context, filter *PaginateFilter) ([]*Note, int, error)
+	FindNotes(ctx context.Context, filter *PaginateFilter) ([]*Note, int, string, error)
 }
 
 var ErrNoteValidation = errors.New("title required for note")

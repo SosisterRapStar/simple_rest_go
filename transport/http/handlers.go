@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -14,7 +15,7 @@ type HttpApi struct {
 	noteService domain.NoteService
 }
 
-func (api *HttpApi) NewHTTPAPI(noteService domain.NoteService) *HttpApi {
+func NewHTTPAPI(noteService domain.NoteService) *HttpApi {
 	return &HttpApi{noteService: noteService}
 }
 
@@ -89,11 +90,7 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	response := map[string]string{"message": "Note was deleted", "id": note_id}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
-
+	api.writeJSON(w, http.StatusOK, response)
 }
 
 func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
@@ -108,10 +105,7 @@ func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	response := map[string]string{"message": "Note was deleted", "id": deleted_id}
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
+	api.writeJSON(w, http.StatusOK, response)
 }
 
 func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
@@ -124,10 +118,7 @@ func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
 	}
 	api.setCommonHeaders(w)
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(note); err != nil {
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
+	api.writeJSON(w, http.StatusOK, note)
 }
 
 func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
@@ -155,21 +146,57 @@ func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	api.setCommonHeaders(w)
-	if err := json.NewEncoder(w).Encode(note); err != nil {
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-		return
-	}
+	api.writeJSON(w, http.StatusOK, note)
 
 }
 
 func (api *HttpApi) FindNotes(w http.ResponseWriter, r *http.Request) {
+	var paginationFilter = domain.PaginateFilter{}
 
+	nextPageToken := r.URL.Query().Get("token")
+	if nextPageToken != "" {
+		paginationFilter.NextPageToken = &nextPageToken
+	}
+	limit := r.URL.Query().Get("limit")
+	if limit == "" {
+		http.Error(w, `{"error": "Unacceptable query param value"}`, http.StatusBadRequest)
+		return
+	}
+	limit_value, err := strconv.Atoi(limit)
+
+	if err != nil {
+		http.Error(w, `{"error": "Unacceptable query param value"}`, http.StatusBadRequest)
+		return
+	}
+	if limit_value < 0 {
+		http.Error(w, `{"error": "Unacceptable query param value"}`, http.StatusBadRequest)
+		return
+	}
+	paginationFilter.Limit = &limit_value
+	notes, notes_num, nextPageToken, err := api.noteService.FindNotes(r.Context(), &paginationFilter)
+	if err != nil {
+		errorFromService := HandleServiceError(err)
+		http.Error(w, errorFromService.Details, errorFromService.Status)
+		return
+	}
+
+	response := struct {
+		Notes         []*domain.Note `json:"notes"`
+		Notes_num     int            `json:"notes_num"`
+		NextPageToken string         `json:"next_page_token,omitempty"`
+	}{
+		Notes:         notes,
+		Notes_num:     notes_num,
+		NextPageToken: nextPageToken,
+	}
+	api.setCommonHeaders(w)
+	api.writeJSON(w, http.StatusOK, response)
 }
 
-// func (api *HttpApi) parseJson(w http.ResponseWriter, r *http.Request) {
-
-// }
-
-// func (api *HttpApi) writeJson(w http.ResponseWriter, r *http.Request, data string) {
-// 	w.
-// }
+func (api *HttpApi) writeJSON(w http.ResponseWriter, status int, data interface{}) {
+	// api.setCommonHeaders(w)
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
+}

@@ -36,5 +36,10 @@ func main() {
 	config := appconfig.MustLoad()
 	fmt.Println(config)
 	server := http.NewServer(config.Address)
-	handlers := http.New
+	api := http.NewHTTPAPI(DI.noteService)
+
+}
+
+func setEndpoints(server *http.Server, handlers *http.HttpApi) {
+	server.Router("/")
 }

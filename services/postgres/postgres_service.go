@@ -47,7 +47,7 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
-	note.Id = id
+	note.Id = id.String()
 	query := `INSERT INTO notes.note (id, title, content) VALUES ($1, $2, $3)`
 
 	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
@@ -60,7 +60,7 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
-	return note.Id.String(), nil
+	return note.Id, nil
 
 }
 
@@ -169,16 +169,16 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	return updated_value, nil
 }
 
-func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.PaginateFilter) ([]*domain.Note, int, error) {
+func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.PaginateFilter) ([]*domain.Note, int, string, error) {
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
 	defer conn.Release()
 
 	if *filter.Limit > 100 {
-		return nil, 0, services.NewServiceError(services.ErrTooManyRowsToFetch, services.ErrTooManyRowsToFetch)
+		return nil, 0, "", services.NewServiceError(services.ErrTooManyRowsToFetch, services.ErrTooManyRowsToFetch)
 	}
 
 	var paginateQuery string
@@ -192,14 +192,14 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id > $1 FETCH NEXT $2 ROWS ONLY"
 		token, err := uuid.Parse(*filter.NextPageToken)
 		if err != nil {
-			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+			return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 		}
 		args = []interface{}{token, *filter.Limit}
 	}
 
 	rows, err = conn.Query(ctx, paginateQuery, args...)
 	if err != nil {
-		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	var notes []*domain.Note
 	defer rows.Close()
@@ -207,14 +207,14 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 		var note domain.Note
 		err := rows.Scan(&note.Id, &note.Title, &note.Content)
 		if err != nil {
-			return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+			return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 		}
 		notes = append(notes, &note)
 	}
 	err = rows.Err()
 	if err != nil {
-		return nil, 0, services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
-	return notes, len(notes), nil
+	return notes, len(notes), notes[len(notes)-1].Id, nil
 
 }
