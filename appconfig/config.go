@@ -63,3 +63,9 @@ func setupLogger(env string) *slog.Logger {
 	}
 	return log
 }
+
+var logger = setupLogger("local")
+
+func GetLogger() *slog.Logger {
+	return logger
+}

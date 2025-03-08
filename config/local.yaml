@@ -1,6 +1,6 @@
 env: "local"
 http_server:
-  address: "0.0.0.0:8080"
+  address: "0.0.0.0:8888"
 storage:
   postgres:
     url: "postgres://test_user_app:1234@192.168.56.6:5432/test_db"
