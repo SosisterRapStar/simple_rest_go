@@ -199,7 +199,7 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 		args = []interface{}{*filter.Limit}
 	} else {
 		logger.Debug("Token provided")
-		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id < $1 FETCH NEXT $2 ROWS ONLY"
+		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id > $1 FETCH NEXT $2 ROWS ONLY"
 		token, err := uuid.Parse(*filter.NextPageToken)
 		if err != nil {
 			return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
@@ -225,6 +225,12 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 	if err != nil {
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
-	return notes, len(notes), notes[len(notes)-1].Id, nil
+	var nextToken string
+	if len(notes) > 0 {
+		nextToken = notes[len(notes)-1].Id
+	} else {
+		nextToken = ""
+	}
+	return notes, len(notes), nextToken, nil
 
 }
