@@ -6,6 +6,11 @@ import (
 	"fmt"
 )
 
+// type CreateNote struct {
+// 	Title   string `json:"title"`
+// 	Content string `json:"content"`
+// }
+
 type Note struct {
 	Id      string `json:"id"`
 	Title   string `json:"title"`
@@ -42,7 +47,7 @@ type NoteUseCases interface {
 }
 
 type NoteService interface {
-	CreateNote(ctx context.Context, note *Note) (string, error)
+	CreateNote(ctx context.Context, note *Note) (*Note, error)
 	GetNote(ctx context.Context, id string) (*Note, error)
 	DeleteNote(ctx context.Context, id string) (string, error)
 	UpdateNote(ctx context.Context, upd *UpdateNote, id string) (*Note, error)

@@ -80,7 +80,7 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note_id, err := api.noteService.CreateNote(r.Context(), &note)
+	response, err := api.noteService.CreateNote(r.Context(), &note)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)
@@ -88,8 +88,7 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 
-	w.WriteHeader(http.StatusOK)
-	response := map[string]string{"message": "Note was deleted", "id": note_id}
+	// w.WriteHeader(http.StatusOK)
 	api.writeJSON(w, http.StatusOK, response)
 }
 
@@ -139,14 +138,14 @@ func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	note, err := api.noteService.UpdateNote(r.Context(), &updNote, id)
+	response, err := api.noteService.UpdateNote(r.Context(), &updNote, id)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)
 		return
 	}
 	api.setCommonHeaders(w)
-	api.writeJSON(w, http.StatusOK, note)
+	api.writeJSON(w, http.StatusOK, response)
 
 }
 

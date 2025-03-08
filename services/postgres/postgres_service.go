@@ -7,10 +7,14 @@ import (
 	"first-proj/services"
 	"reflect"
 
+	"first-proj/appconfig"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+var logger = appconfig.GetLogger()
 
 // inplementation specific errors
 // only postgres knows what's happening
@@ -24,27 +28,30 @@ type PostgresService struct {
 	db *pgxpool.Pool
 }
 
-func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (string, error) {
+func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (*domain.Note, error) {
+	// var note domain.Note
+	// note.Title = crt.Title
+
 	if err := note.Validate(); err != nil {
-		return "", services.NewServiceError(err, err)
+		return nil, services.NewServiceError(err, err)
 	}
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 
 	}
 	defer conn.Release()
 
 	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
 	if err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	defer tx.Rollback(ctx)
 
 	id, err := uuid.NewV7()
 
 	if err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	note.Id = id.String()
@@ -52,15 +59,15 @@ func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (
 
 	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
 	if err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
-	return note.Id, nil
+	return note, nil
 
 }
 
@@ -170,6 +177,7 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 }
 
 func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.PaginateFilter) ([]*domain.Note, int, string, error) {
+	logger.Info("StartedPagination")
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
@@ -186,10 +194,12 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 	var args []interface{}
 
 	if filter.NextPageToken == nil {
+		logger.Debug("No token provided")
 		paginateQuery = "SELECT id, title, content FROM notes.note FETCH FIRST $1 ROWS ONLY"
 		args = []interface{}{*filter.Limit}
 	} else {
-		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id > $1 FETCH NEXT $2 ROWS ONLY"
+		logger.Debug("Token provided")
+		paginateQuery = "SELECT id, title, content FROM notes.note WHERE id < $1 FETCH NEXT $2 ROWS ONLY"
 		token, err := uuid.Parse(*filter.NextPageToken)
 		if err != nil {
 			return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
