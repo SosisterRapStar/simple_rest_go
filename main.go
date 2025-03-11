@@ -17,12 +17,11 @@ var config = appconfig.MustLoad()
 
 type DependencyContainer struct {
 	noteService domain.NoteService
-	httpApi     httpt.HttpApi
 }
 
 func main() {
 	logger := appconfig.GetLogger()
-	noteService := postgres.NewPostgres(
+	postgresService := postgres.NewPostgres(
 		connections.NewPool(
 			int32(config.Storage.MaxConns),
 			int32(config.Storage.MinConns),
@@ -30,13 +29,12 @@ func main() {
 		),
 	)
 	di := DependencyContainer{
-		noteService: noteService,
-		httpApi:     httpt.NewHttpApiHandlers(noteService),
+		noteService: postgresService,
 	}
 
 	config := appconfig.MustLoad()
 	fmt.Println(config)
-	server := httpt.NewServer(config.Address, di.httpApi)
+	server := httpt.NewServer(config.Address, httpt.NewHttpApiHandlers(di.noteService))
 	done := make(chan struct{})
 	server.Start(done)
 	signalChan := make(chan os.Signal, 1)
