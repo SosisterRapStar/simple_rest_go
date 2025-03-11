@@ -36,7 +36,7 @@ type Config struct {
 func MustLoad() *Config {
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
-		log.Fatal("Config is not set")
+		log.Fatal("Config path is not set")
 	}
 
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
@@ -58,7 +58,7 @@ func setupLogger(env string) *slog.Logger {
 	switch env {
 	case envLocal:
 		log = slog.New(
-			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}),
+			slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true}),
 		)
 	}
 	return log

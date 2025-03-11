@@ -1,6 +1,7 @@
 package httpt
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"first-proj/domain"
@@ -9,22 +10,33 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
-type HttpApi struct {
+var MAXREQUESTIME = 60 * time.Second
+
+type HttpApi interface {
+	CreateNote(w http.ResponseWriter, r *http.Request)
+	DeleteNote(w http.ResponseWriter, r *http.Request)
+	GetNoteById(w http.ResponseWriter, r *http.Request)
+	FindNotes(w http.ResponseWriter, r *http.Request)
+	UpdateNote(w http.ResponseWriter, r *http.Request)
+}
+
+type HttpApiHandlers struct {
 	noteService domain.NoteService
 }
 
-func NewHTTPAPI(noteService domain.NoteService) *HttpApi {
-	return &HttpApi{noteService: noteService}
+func NewHttpApiHandlers(noteService domain.NoteService) *HttpApiHandlers {
+	return &HttpApiHandlers{noteService: noteService}
 }
 
-func (api *HttpApi) setCommonHeaders(w http.ResponseWriter) {
+func (api *HttpApiHandlers) setCommonHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "no-store, max-age=0")
 	w.Header().Set("Pragma", "no-cache")
 }
 
-func (api *HttpApi) checkContentType(r *http.Request) error {
+func (api *HttpApiHandlers) checkContentType(r *http.Request) error {
 	ct := r.Header.Get("Content-Type")
 	if ct != "" {
 		mediaType := strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
@@ -35,7 +47,7 @@ func (api *HttpApi) checkContentType(r *http.Request) error {
 	return nil
 }
 
-func (api *HttpApi) decodeJson(decoder *json.Decoder, v any) *HttpApiError {
+func (api *HttpApiHandlers) decodeJson(decoder *json.Decoder, v any) *HttpApiError {
 	if err := decoder.Decode(v); err != nil {
 		var syntaxError *json.SyntaxError
 		var unmarshalTypeError *json.UnmarshalTypeError
@@ -63,7 +75,7 @@ func (api *HttpApi) decodeJson(decoder *json.Decoder, v any) *HttpApiError {
 	return nil
 }
 
-func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
+func (api *HttpApiHandlers) CreateNote(w http.ResponseWriter, r *http.Request) {
 	if err := api.checkContentType(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
 	}
@@ -80,7 +92,9 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := api.noteService.CreateNote(r.Context(), &note)
+	serviceCTX, cancel := context.WithTimeout(r.Context(), MAXREQUESTIME)
+	defer cancel()
+	response, err := api.noteService.CreateNote(serviceCTX, &note)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)
@@ -92,9 +106,11 @@ func (api *HttpApi) CreateNote(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, http.StatusOK, response)
 }
 
-func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
+func (api *HttpApiHandlers) DeleteNote(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	deleted_id, err := api.noteService.DeleteNote(r.Context(), id)
+	serviceCTX, cancel := context.WithTimeout(r.Context(), MAXREQUESTIME)
+	defer cancel()
+	deleted_id, err := api.noteService.DeleteNote(serviceCTX, id)
 	if err != nil {
 		errorToSend := HandleServiceError(err)
 		http.Error(w, errorToSend.Details, errorToSend.Status)
@@ -107,9 +123,11 @@ func (api *HttpApi) DeleteNote(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, http.StatusOK, response)
 }
 
-func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
+func (api *HttpApiHandlers) GetNoteById(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	note, err := api.noteService.GetNote(r.Context(), id)
+	serviceCTX, cancel := context.WithTimeout(r.Context(), MAXREQUESTIME)
+	defer cancel()
+	note, err := api.noteService.GetNote(serviceCTX, id)
 	if err != nil {
 		errorToSend := HandleServiceError(err)
 		http.Error(w, errorToSend.Details, errorToSend.Status)
@@ -120,7 +138,7 @@ func (api *HttpApi) GetNoteById(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, http.StatusOK, note)
 }
 
-func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
+func (api *HttpApiHandlers) UpdateNote(w http.ResponseWriter, r *http.Request) {
 	if err := api.checkContentType(r); err != nil {
 		http.Error(w, err.Error(), http.StatusUnsupportedMediaType)
 	}
@@ -149,7 +167,7 @@ func (api *HttpApi) UpdateNote(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (api *HttpApi) FindNotes(w http.ResponseWriter, r *http.Request) {
+func (api *HttpApiHandlers) FindNotes(w http.ResponseWriter, r *http.Request) {
 	var paginationFilter = domain.PaginateFilter{}
 
 	nextPageToken := r.URL.Query().Get("token")
@@ -172,6 +190,7 @@ func (api *HttpApi) FindNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	paginationFilter.Limit = &limit_value
+
 	notes, notes_num, nextPageToken, err := api.noteService.FindNotes(r.Context(), &paginationFilter)
 	if err != nil {
 		errorFromService := HandleServiceError(err)
@@ -192,7 +211,7 @@ func (api *HttpApi) FindNotes(w http.ResponseWriter, r *http.Request) {
 	api.writeJSON(w, http.StatusOK, response)
 }
 
-func (api *HttpApi) writeJSON(w http.ResponseWriter, status int, data interface{}) {
+func (api *HttpApiHandlers) writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	// api.setCommonHeaders(w)
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(data); err != nil {

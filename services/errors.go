@@ -9,6 +9,7 @@ var (
 	ErrBadRequest         = errors.New("Bad request")
 	ErrInternalFailure    = errors.New("Internal erorr")
 	ErrTooManyRowsToFetch = errors.New("Too many rows to fetch")
+	ErrTimeOutExceeded    = errors.New("Something bad occured and timeout was exceeded")
 )
 
 type ServiceError struct {

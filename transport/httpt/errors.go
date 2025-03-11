@@ -31,6 +31,8 @@ func HandleServiceError(err error) HttpApiError {
 			logger.Error(serviceError.GetActualError().Error()) // в будущем будет залогировано
 		case domain.ErrNoteValidation:
 			apiError.Status = http.StatusBadRequest
+		case services.ErrTimeOutExceeded:
+			apiError.Status = http.StatusRequestTimeout
 		}
 	}
 	return apiError

@@ -209,8 +209,12 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 
 	rows, err = conn.Query(ctx, paginateQuery, args...)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, 0, "", services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
+
 	var notes []*domain.Note
 	defer rows.Close()
 	for rows.Next() {
