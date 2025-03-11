@@ -28,11 +28,13 @@ func HandleServiceError(err error) HttpApiError {
 		switch appError {
 		case services.ErrNoteNotFound:
 			apiError.Status = http.StatusNotFound
-			logger.Error(serviceError.GetActualError().Error()) // в будущем будет залогировано
 		case domain.ErrNoteValidation:
 			apiError.Status = http.StatusBadRequest
 		case services.ErrTimeOutExceeded:
 			apiError.Status = http.StatusRequestTimeout
+		default:
+			apiError.Status = http.StatusBadRequest
+
 		}
 	}
 	return apiError

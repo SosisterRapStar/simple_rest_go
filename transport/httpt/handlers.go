@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var MAXREQUESTIME = 60 * time.Second
+var MAXREQUESTIME = 10 * time.Second
 
 type HttpApi interface {
 	CreateNote(w http.ResponseWriter, r *http.Request)
@@ -155,8 +155,10 @@ func (api *HttpApiHandlers) UpdateNote(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Request should contain only one json structure", http.StatusBadRequest)
 		return
 	}
+	serviceCTX, cancel := context.WithTimeout(r.Context(), MAXREQUESTIME)
+	defer cancel()
 
-	response, err := api.noteService.UpdateNote(r.Context(), &updNote, id)
+	response, err := api.noteService.UpdateNote(serviceCTX, &updNote, id)
 	if err != nil {
 		sendError := HandleServiceError(err)
 		http.Error(w, sendError.Details, sendError.Status)
@@ -190,8 +192,9 @@ func (api *HttpApiHandlers) FindNotes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	paginationFilter.Limit = &limit_value
-
-	notes, notes_num, nextPageToken, err := api.noteService.FindNotes(r.Context(), &paginationFilter)
+	serviceCTX, cancel := context.WithTimeout(r.Context(), MAXREQUESTIME)
+	defer cancel()
+	notes, notes_num, nextPageToken, err := api.noteService.FindNotes(serviceCTX, &paginationFilter)
 	if err != nil {
 		errorFromService := HandleServiceError(err)
 		http.Error(w, errorFromService.Details, errorFromService.Status)

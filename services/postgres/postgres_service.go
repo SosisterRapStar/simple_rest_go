@@ -29,70 +29,98 @@ type PostgresService struct {
 }
 
 func (pgs *PostgresService) CreateNote(ctx context.Context, note *domain.Note) (*domain.Note, error) {
-	// var note domain.Note
-	// note.Title = crt.Title
+	logger.Debug("CreateNote started")
+	defer logger.Debug("CreateNote completed")
 
 	if err := note.Validate(); err != nil {
 		return nil, services.NewServiceError(err, err)
 	}
+
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
+		logger.Error("Failed to acquire connection", "error", err)
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
-
 	}
 	defer conn.Release()
 
-	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	tx, err := startTransaction(ctx, conn, pgx.ReadCommitted)
 	if err != nil {
-		return nil, services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, err
 	}
+
 	defer tx.Rollback(ctx)
 
 	id, err := uuid.NewV7()
-
 	if err != nil {
+		logger.Error("Failed to generate UUID", "error", err)
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	note.Id = id.String()
 	query := `INSERT INTO notes.note (id, title, content) VALUES ($1, $2, $3)`
 
-	_, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content)
-	if err != nil {
+	if _, err = tx.Exec(ctx, query, note.Id, note.Title, note.Content); err != nil {
+		logger.Error("Failed to execute query", "error", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
-	// Commit the transaction
 	if err := tx.Commit(ctx); err != nil {
+		logger.Error("Failed to commit transaction", "error", err)
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	return note, nil
-
 }
 
-// vot bi suda contextniy manager
 func (pgs *PostgresService) GetNote(ctx context.Context, id string) (*domain.Note, error) {
+	logger.Debug("GetNote started", "id", id)
+	defer logger.Debug("GetNote completed", "id", id)
+
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
-		return nil, err
+		logger.Error("Failed to acquire connection", "error", err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
-
 	defer conn.Release()
 
 	note := &domain.Note{}
-	note_id, _ := uuid.Parse(id)
+	note_id, err := uuid.Parse(id)
+	if err != nil {
+		logger.Error("Failed to parse UUID", "error", err)
+		return nil, services.NewServiceError(services.ErrInvalidInput, err)
+	}
 
 	err = conn.QueryRow(ctx, "SELECT id, title, content FROM notes.note WHERE id = $1", note_id).Scan(&note.Id, &note.Title, &note.Content)
-
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, services.NewServiceError(services.ErrInternalFailure, err) // logic level error
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, services.NewServiceError(services.ErrTimeOutExceeded, err)
 		}
-		return nil, err
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, services.NewServiceError(services.ErrNoteNotFound, err)
+		}
+		logger.Error("Failed to query note", "error", err)
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
 	return note, nil
+}
+
+func startTransaction(ctx context.Context, conn *pgxpool.Conn, isolation pgx.TxIsoLevel) (pgx.Tx, error) {
+	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: isolation})
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			logger.Error("Error occured during transaction begining")
+			return nil, services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
+		return nil, services.NewServiceError(services.ErrInternalFailure, err)
+	}
+	return tx, nil
 }
 
 func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, error) {
@@ -103,9 +131,9 @@ func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, 
 	}
 	defer conn.Release()
 
-	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	tx, err := startTransaction(ctx, conn, pgx.ReadCommitted)
 	if err != nil {
-		return "", services.NewServiceError(services.ErrInternalFailure, err)
+		return "", err
 	}
 	defer tx.Rollback(ctx)
 
@@ -113,6 +141,9 @@ func (pgs *PostgresService) DeleteNote(ctx context.Context, id string) (string, 
 
 	_, err = tx.Exec(ctx, "DELETE FROM notes.note WHERE id = $1", note_id)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return "", services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
 		return "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
@@ -153,19 +184,24 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 	}
 	defer conn.Release()
 
-	tx, err := conn.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	tx, err := startTransaction(ctx, conn, pgx.ReadCommitted)
 	if err != nil {
-		return nil, services.NewServiceError(services.ErrInternalFailure, err)
+		return nil, err
 	}
+
 	defer tx.Rollback(ctx)
 
 	old_note, err := pgs.GetNote(ctx, id)
 	if err != nil {
+		logger.Error(err.Error())
 		return nil, err
 	}
 	updated_value := pgs.updateOldObj(old_note, upd)
 	_, err = tx.Exec(ctx, "UPDATE notes.note SET title = $1, content = $2 WHERE id = $3", updated_value.Title, updated_value.Content, updated_value.Id)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, services.NewServiceError(services.ErrTimeOutExceeded, err)
+		}
 		return nil, services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
@@ -177,7 +213,7 @@ func (pgs *PostgresService) UpdateNote(ctx context.Context, upd *domain.UpdateNo
 }
 
 func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.PaginateFilter) ([]*domain.Note, int, string, error) {
-	logger.Info("StartedPagination")
+	logger.Debug("StartedPagination")
 	conn, err := pgs.db.Acquire(ctx)
 	if err != nil {
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
@@ -209,9 +245,7 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 
 	rows, err = conn.Query(ctx, paginateQuery, args...)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, 0, "", services.NewServiceError(services.ErrTimeOutExceeded, err)
-		}
+		logger.Error(err.Error())
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 
@@ -227,6 +261,7 @@ func (pgs *PostgresService) FindNotes(ctx context.Context, filter *domain.Pagina
 	}
 	err = rows.Err()
 	if err != nil {
+		logger.Error(err.Error())
 		return nil, 0, "", services.NewServiceError(services.ErrInternalFailure, err)
 	}
 	var nextToken string
