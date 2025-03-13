@@ -31,6 +31,9 @@ func (pg *PostgresConn) Open(config appconfig.Config) error {
 }
 
 func (pg *PostgresConn) Close(ctx context.Context) error {
+	logger.Info("Started to close postgresql connection pool")
+	// blocking call
 	pg.Pool.Close()
+	logger.Info("PG pool was closed")
 	return nil
 }
