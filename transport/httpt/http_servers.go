@@ -2,10 +2,11 @@ package httpt
 
 import (
 	"context"
+	"errors"
 	"first-proj/appconfig"
 	"fmt"
+	"log"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -51,35 +52,21 @@ func NewServer(address string, handlers HttpApi) Server {
 	}
 }
 
-func (s *Server) Start(done <-chan struct{}) {
-	logger.Debug("Starting server")
+func (s *Server) Start() {
 
 	go func() {
-		err := s.server.ListenAndServe()
-		if err != nil {
-			logger.Error("Error occured during the server starting", err)
-			os.Exit(1)
+		logger.Info("Starting the server")
+		if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("HTTP server error: %v", err)
 		}
+		logger.Info("Stopped serving new connections.")
 	}()
-	fmt.Println("Server is up")
-	<-done
-	logger.Debug("Server is shutting down")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	if err := s.server.Shutdown(ctx); err != nil {
-		logger.Error("Server shutdown error:", err)
-	}
-	fmt.Println("Server stopped")
-
 }
 
-func (s *Server) Stop() {
-	logger.Debug("Stopping the server")
-	err := s.server.Close()
-	if err != nil {
-		fmt.Println("Error occured stopping the server")
-		os.Exit(1)
+func (s *Server) Stop(ctx context.Context) {
+	logger.Debug("Shutting down the server")
+	if err := s.server.Shutdown(ctx); err != nil {
+		log.Fatal("Error occured shutting the server down")
 	}
-	logger.Debug("Server is stopped")
-
+	logger.Info("Server was stopped")
 }
