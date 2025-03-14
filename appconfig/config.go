@@ -16,6 +16,9 @@ const (
 type Server struct {
 	Address string `yaml:"address" env-required:"true"`
 }
+type Metrics struct {
+	MetricsPort string `yaml:"metrics_port" env-default:":8080"`
+}
 
 type Postgres struct {
 	Url      string `yaml:"url" env-required:"true"`
@@ -31,6 +34,7 @@ type Config struct {
 	Env     string `yaml:"env" env-default:"local"`
 	Server  `yaml:"http_server"`
 	Storage `yaml:"storage"`
+	Metrics `yaml:"metrics"`
 }
 
 func MustLoad() *Config {

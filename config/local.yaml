@@ -6,3 +6,5 @@ storage:
     url: "postgres://test_user_app:1234@192.168.56.6:5432/test_db"
     max_conns: 12
     min_conns: 3
+metrics:
+  metrics_port: ":9999"

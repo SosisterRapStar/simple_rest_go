@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime/trace"
 	"syscall"
 	"time"
 
@@ -23,6 +24,17 @@ type DependencyContainer struct {
 }
 
 func main() {
+	tracef, err := os.Create("trace.out")
+	if err != nil {
+		log.Fatalf("Ошибка при создании файла трассировки: %v", err)
+	}
+	defer tracef.Close()
+	err = trace.Start(tracef)
+	if err != nil {
+		log.Fatalf("Ошибка при запуске трассировки: %v", err)
+	}
+	defer trace.Stop()
+
 	// store opened conns to close them after
 	var openedConnections = []connections.Connection{}
 
@@ -41,10 +53,11 @@ func main() {
 
 	config := appconfig.MustLoad()
 	fmt.Println(config)
-	server := httpt.NewServer(config.Address, httpt.NewHttpApiHandlers(di.noteService))
+	server := httpt.NewServer(config, httpt.NewHttpApiHandlers(di.noteService))
 
 	// starts the server
 	server.Start()
+	httpt.ListenAndServeProm(config)
 
 	// waiting for SIGINT/SIGTERM
 	sigChan := make(chan os.Signal, 1)
