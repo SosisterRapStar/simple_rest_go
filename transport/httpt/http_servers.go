@@ -16,6 +16,11 @@ import (
 
 var logger = appconfig.GetLogger()
 
+type IServer interface {
+	Start()
+	Stop(ctx context.Context)
+}
+
 type Server struct {
 	server *http.Server
 	Router *http.ServeMux
@@ -69,7 +74,7 @@ func loggingMidleware(next http.Handler) http.Handler {
 	})
 }
 
-func NewServer(config *appconfig.Config, handlers HttpApi) Server {
+func NewServer(config *appconfig.Config, handlers HttpApi) *Server {
 
 	router := http.NewServeMux()
 	wrapedRouter := loggingMidleware(router)
@@ -84,7 +89,7 @@ func NewServer(config *appconfig.Config, handlers HttpApi) Server {
 		MaxHeaderBytes: (1 << 20),
 	}
 
-	newServer := Server{
+	newServer := &Server{
 		server: &server,
 		Router: router,
 	}
@@ -103,7 +108,7 @@ func (s *Server) RegisterRoutes(handlers HttpApi) {
 func (s *Server) Start() {
 
 	go func() {
-		logger.Info("Starting the server")
+		logger.Info(fmt.Sprintf("Starting the server on %s", s.server.Addr))
 		if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("HTTP server error: %v", err)
 		}
@@ -113,7 +118,7 @@ func (s *Server) Start() {
 }
 
 func (s *Server) Stop(ctx context.Context) {
-	logger.Debug("Shutting down the server")
+	logger.Info(fmt.Sprintf("Shutting down the server on %s", s.server.Addr))
 	if err := s.server.Shutdown(ctx); err != nil {
 		log.Fatal("Error occured shutting the server down")
 	}
@@ -124,32 +129,36 @@ func (s *Server) Stop(ctx context.Context) {
 var (
 	httpRequestCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of http requests received",
+			Namespace: "app",
+			Name:      "http_requests_total",
+			Help:      "Total number of http requests received",
 		}, []string{
 			"status",
 			"path",
 			"method"})
 	activeRequestsGauge = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "http_active_requests",
-			Help: "Number of active connections to the service",
+			Namespace: "app",
+			Name:      "http_active_requests",
+			Help:      "Number of active connections to the service",
 		},
 	)
 	latencyHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
-		Name: "http_request_duration_seconds",
-		Help: "Duration of HTTP requests",
+		Namespace: "app",
+		Name:      "http_request_duration_seconds",
+		Help:      "Duration of HTTP requests",
+		Buckets:   []float64{0.1, 0.15, 0.2, 0.25, 0.3},
 	}, []string{"status", "path", "method"})
 )
 
-func ListenAndServeProm(config *appconfig.Config) {
+func NewMetricsServer(config *appconfig.Config) *Server {
 	mux := http.NewServeMux()
 	reg := prometheus.NewRegistry()
 
 	// metrics registration
+	reg.MustRegister(latencyHistogram)
 	reg.MustRegister(httpRequestCounter)
 	reg.MustRegister(activeRequestsGauge)
-	reg.MustRegister(latencyHistogram)
 
 	handler := promhttp.HandlerFor(
 		reg,
@@ -158,10 +167,16 @@ func ListenAndServeProm(config *appconfig.Config) {
 	mux.Handle("/metrics", handler)
 
 	// Получаем порт из переменной окружения (или используем значение по умолчанию)
-	port := config.MetricsPort
 
-	log.Printf("Starting Prometheus metrics server on %s", port)
-	if err := http.ListenAndServe(port, mux); err != nil {
-		log.Fatalf("Could not start server: %v", err)
+	router := http.NewServeMux()
+	server := http.Server{
+		Addr:    config.MetricsPort,
+		Handler: mux,
 	}
+
+	newServer := &Server{
+		server: &server,
+		Router: router,
+	}
+	return newServer
 }

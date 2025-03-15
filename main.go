@@ -54,12 +54,13 @@ func main() {
 	config := appconfig.MustLoad()
 	fmt.Println(config)
 	server := httpt.NewServer(config, httpt.NewHttpApiHandlers(di.noteService))
-
+	metricsServer := httpt.NewMetricsServer(config)
 	// starts the server
+	metricsServer.Start()
 	server.Start()
-	httpt.ListenAndServeProm(config)
 
 	// waiting for SIGINT/SIGTERM
+	logger.Info("Waiting for sigchan")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
@@ -70,6 +71,7 @@ func main() {
 
 	// stopping the server gracefully
 	server.Stop(gshutCtx)
+	metricsServer.Stop(gshutCtx)
 	// closing other connections
 	for _, conn := range openedConnections {
 		closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
