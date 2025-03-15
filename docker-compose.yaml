@@ -1,17 +1,4 @@
 services:
-
-  # prom_init:
-  #   image: prom/prometheus:v3.2.1
-  #   user: root
-  #   entrypoint:
-  #     - /bin/sh
-  #     - -c
-  #     - |
-  #       chown -R 65534:65534 /prometheus
-  #   volumes:
-  #     - /data/prometheus:/prometheus
-      
-
   prometheus:
     container_name: prometheus
     image: prom/prometheus:v3.2.1
@@ -22,9 +9,7 @@ services:
     ports:
       - 9090:9090
     restart: unless-stopped
-    # depends_on:
-    #   - prom_init
-
+  
   grafana: 
     container_name: grafana
     image: grafana/grafana:11.5.2
