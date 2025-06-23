@@ -1,4 +1,4 @@
-package appconfig
+package simple_rest_go
 
 import (
 	"log"
