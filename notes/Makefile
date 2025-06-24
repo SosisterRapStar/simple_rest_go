@@ -31,6 +31,8 @@ set-deps:
 	@echo "Setting up project deps"
 	@go install github.com/swaggo/swag/cmd/swag@latest
 	@go install github.com/rubenv/sql-migrate/...@latest
+	@go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
 
 
 .PHONY: set-deps
@@ -98,6 +100,10 @@ endif
 
 .PHONY: testMultiThread testOneThread 
 
+#LINT
+lint: 
+	@echo "Start linting"
+	@golangci-lint run
 
 # From:	Paul Smith
 # Subject:	Re: multiple .PHONY or single .PHONY

@@ -10,9 +10,11 @@ import (
 type NoteRepo interface {
 	Save(ctx context.Context, note Note) error
 	Delete(ctx context.Context, id uuid.UUID) error
-
 	Get(ctx context.Context, id uuid.UUID) (*Note, error)
 	Update(ctx context.Context, id uuid.UUID) (*Note, error)
+
+	FindConnectedNotes(ctx context.Context, id uuid.UUID)
+	FindNotesByTags(ctx context.Context, id uuid.UUID)
 }
 
 type Note struct {
