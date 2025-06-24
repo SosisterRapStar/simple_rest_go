@@ -3,10 +3,27 @@ SHELLFLAGS := -c
 CURDIR := $(shell pwd)
 
 
-.ONESHELL:
-#======================================================================
+
+# ENV
+DEPLOYMENTS_PACKAGE := $(CURDIR)/deployments
+ENV := $(DEPLOYMENTS_PACKAGE)/.env_local
+TEST_ENV := $(DEPLOYMENTS_PACKAGE)/.test_env
+.ONESHELL: 
+
+
+define local-env-script
+	set -a
+	source $(ENV)
+	set +a 
+endef
+
+
+set-local-env:
+	@$(local-env-script)
+
+
+
 # DEPS
-#======================================================================
 LOCAL_BIN := $(CURDIR)/bin
 export GOBIN := $(LOCAL_BIN)
 
@@ -18,9 +35,37 @@ set-deps:
 
 .PHONY: set-deps
 
-#======================================================================
+# LOCAL MIGRATIONS
+MIGRATOR := $(LOCAL_BIN)/sql-migrate
+DB_COMPOSE_FILE := ./deployments/docker_compose_db_only.yml
+MIGRATIONS_DIR := ./internal/schema
+
+
+start-db-local: set-local-env
+	@echo "Starting local database..."
+	@$(local-env-script)
+	@docker compose -f $(DB_COMPOSE_FILE) up -d
+
+stop-db-local:
+	@echo "Stopping local database..."
+	@docker compose -f $(DB_COMPOSE_FILE) down
+	@echo "Database stopped."
+
+up: set-local-env
+	@echo "Applying migrations..."
+	@cd $(MIGRATIONS_DIR) && $(MIGRATOR) up -config=dbconfig.yaml -env=local
+
+down:
+	@echo "Rolling back migrations..."
+	@cd $(MIGRATIONS_DIR) && $(MIGRATOR) down -config=dbconfig.yaml -env=local
+
+status:
+	@echo "Checking migration status..."
+	@cd $(MIGRATIONS_DIR) && $(MIGRATOR) status -config=dbconfig.yaml -env=local
+
+.PHONY: start-db-local stop-db-local up down status
+
 # BUILD
-#======================================================================
 build:
 	@echo "Start project build"
 	@docker-compose up -d
@@ -31,9 +76,7 @@ run:
 
 .PHONY: build run
 
-#======================================================================
 # LOAD TESTING (NOT WORKING NOW)
-#======================================================================
 testOneThread:
 ifndef ENDPOINT
 	@echo "Testing default endpoint: $(BASE_URL)/notes/?limit=2"

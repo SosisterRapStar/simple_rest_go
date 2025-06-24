@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    env_file:
+      - ${CURRENT_ENV_FILE}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${PG_PORT}:${PG_PORT}
+    volumes:
+      - pgd:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  pgd:
+

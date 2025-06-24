@@ -1,0 +1,11 @@
+local:  
+  dialect: postgres
+  datasource: host=localhost port=${PG_PORT} dbname=${POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} sslmode=disable
+  dir: migrations
+  table: migrations
+
+docker: 
+  dialect: postgres
+  datasource: host=${PG_CONTAINER_HOST} port=${PG_PORT} dbname=$POSTGRES_DB} user=${POSTGRES_USER} password=${POSTGRES_PASSWORD} sslmode=disable
+  dir: migrations
+  table: migrations
