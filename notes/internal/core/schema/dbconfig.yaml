@@ -1,0 +1,9 @@
+local: 
+  dialect: postgres
+  dir: migrations
+  table: migrations
+
+default: 
+  dialect: postgres
+  dir: migrations
+  table: migrations
