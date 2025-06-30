@@ -5,7 +5,7 @@ go 1.23.5
 require (
 	github.com/google/uuid v1.6.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
-	github.com/jackc/pgx/v5 v5.7.2
+	github.com/jackc/pgx/v5 v5.7.5
 	github.com/prometheus/client_golang v1.21.1
 )
 

@@ -14,19 +14,28 @@ var (
 	Direct   Direction = 1
 )
 
-type Note struct {
+type NoteBase struct {
 	ID        uuid.UUID `json:"id"`
 	UserId    uuid.UUID `json:"user_id"`
 	Name      uuid.UUID `json:"name"`
 	Content   uuid.UUID `json:"content"`
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
-	Tags      []string  `json:"tags,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
+type Note struct {
+	NoteBase
+	Tags []string `json:"tags,omitempty"`
+}
+
+type SavedNote struct {
+	NoteBase
 }
 
 type CreateNote struct {
-	Name    uuid.UUID `json:"name"`
-	Content uuid.UUID `json:"content"`
-	Tags    []string  `json:"tags"`
+	Name      uuid.UUID `json:"name"`
+	Content   uuid.UUID `json:"content"`
+	ExpiresAt time.Time `json:"expires_at,omitempty"`
 }
 
 type UpdateNote struct {
