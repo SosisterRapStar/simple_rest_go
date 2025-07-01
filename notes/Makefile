@@ -110,8 +110,11 @@ elastic-up:
 	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-elastic.yaml up -d
 elastic-down:
 	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-elastic.yaml down -d
+redis-up:
+	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-redis.yaml up -d
 
-
+redis-down:
+	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-redis.yaml down -d
 # From:	Paul Smith
 # Subject:	Re: multiple .PHONY or single .PHONY
 # Date:	Thu, 18 Feb 2010 10:23:19 -0500

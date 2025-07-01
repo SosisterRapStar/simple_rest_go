@@ -23,6 +23,12 @@ type Module struct {
 	repo NoteRepo
 }
 
+func New(r NoteRepo) *Module {
+	return &Module{
+		repo: r,
+	}
+}
+
 func (n *Module) CreateNewNote(ctx context.Context, params *CreateNote) (*Note, error) {
 	note, err := n.repo.Save(ctx, params)
 	if err != nil {
