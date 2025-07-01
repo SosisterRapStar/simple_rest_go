@@ -28,4 +28,20 @@ var (
 	SET deleted_at = CURRENT_TIMESTAMP
 	WHERE nt.note_id = $1; 
 	`
+
+	getNoteInfoQuery = `
+	SELECT 
+		name
+		, content
+		, expires_at
+	FROM notes.note n
+	WHERE id = $1 AND n.deleted_at is NULL;
+	`
+	getTagsForNoteQuer = `
+	SELECT 
+		name
+	FROM notes.tag ntg 
+	JOIN notes.note_tag nt ON ntg.id = nt.tag_id
+	WHERE nt.note_id = $1 AND ntg.deleted_at is NULL
+	`
 )

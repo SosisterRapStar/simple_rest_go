@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/sosisterrapstar/simple_rest_go/internal/core"
 	"github.com/sosisterrapstar/simple_rest_go/internal/core/notes"
 )
 
@@ -12,7 +13,7 @@ type NoteRepo struct {
 	conn pgxpool.Pool
 }
 
-func (n *NoteRepo) Save(ctx context.Context, params *notes.CreateNote) (*notes.SavedNote, error) {
+func (nr *NoteRepo) Save(ctx context.Context, params *notes.CreateNote) (*notes.SavedNote, error) {
 	var (
 		sn notes.SavedNote
 	)
@@ -27,9 +28,20 @@ func (n *NoteRepo) Save(ctx context.Context, params *notes.CreateNote) (*notes.S
 	return &sn, nil
 }
 
-func (n *NoteRepo) Delete(ctx context.Context, id uuid.UUID) error {
+func (nr *NoteRepo) Delete(ctx context.Context, id uuid.UUID) error {
 	if _, err := n.conn.Exec(ctx, deleteNoteQuery); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (nr *NoteRepo) Get(ctx context.Context, userId uuid.UUID, id uuid.UUID) (*notes.Note, error) {
+}
+
+func (nr *NoteRepo) List(ctx context.Context, userId uuid.UUID, paging core.LimitOffsetPaging) {
+
+}
+
+func (nr *NoteRepo) Update() {
+
 }
