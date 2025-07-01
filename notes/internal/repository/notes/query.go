@@ -1,4 +1,4 @@
-package repository
+package notes
 
 var (
 	createNoteQuery = `
@@ -29,20 +29,30 @@ var (
 	WHERE nt.note_id = $1; 
 	`
 
-	getNoteQuery = ` 
-	SELECT 
-		n.name 
-		, n.content
-		, n.expires_at
-		, array_agg(ntag.name::TEXT)
-	FROM notes.note_tag nt
-	JOIN notes.note n 
-	ON n.id = nt.note_id
-	JOIN notes.tag ntag
-	ON nt.tag_id = ntag.id
-	WHERE n.user_id = $1 AND nt.deleted_at is NULL
+	getUserNotesQuery = ` 
+	SELECT
+	name
+	id
+	, name
+	, content
+	, expires_at
+	, created_at
+	FROM notes.note n 
+	WHERE n.user_id = $1 
+	AND n.deleted_at is NULL;
 	`
 
+	getNoteTags = `
+	SELECT
+		t.name 
+	FROM notes.tag t 
+	JOIN notes.note_tag nt 
+	ON t.id = nt.tag_id
+	WHERE 
+		nt.deleted_at is NULL 
+	AND
+		nt.note_id = $1
+	`
 	updateQueryNote = `
 	UPDATE notes.note n 
 	SET 

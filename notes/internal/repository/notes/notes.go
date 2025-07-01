@@ -1,8 +1,7 @@
-package repository
+package notes
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -14,9 +13,9 @@ type NoteRepo struct {
 	conn pgxpool.Pool
 }
 
-func (nr *NoteRepo) Save(ctx context.Context, params *notes.CreateNote) (*notes.SavedNote, error) {
+func (nr *NoteRepo) Save(ctx context.Context, params *notes.CreateNote) (*notes.Note, error) {
 	var (
-		sn notes.SavedNote
+		sn notes.Note
 	)
 	if err := nr.conn.QueryRow(ctx, createNoteQuery, params.Name, params.Content, params.ExpiresAt).Scan(&sn.ID,
 		&sn.Name,
@@ -43,25 +42,27 @@ func (nr *NoteRepo) GetUsersNotes(ctx context.Context, userId uuid.UUID) ([]*not
 		return nil, err
 	}
 
-	noteModels, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*notes.Note, error){
+	noteModels, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*notes.Note, error) {
 		var (
 			n notes.Note
-			tags string = ""
 		)
 		if err := row.Scan(
 			&n.ID,
 			&n.Name,
 			&n.Content,
 			&n.ExpiresAt,
-		)
+			&n.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		return &n, nil
+
 	})
+
 	if err != nil {
 		return nil, err
 	}
-
-}
-
-func (nr *NoteRepo) fromPostgresArrayToGo(pArr string) []string {
+	return noteModels, nil
 
 }
 
@@ -72,9 +73,9 @@ func (nr *NoteRepo) fromPostgresArrayToGo(pArr string) []string {
 
 // }
 
-func (nr *NoteRepo) Update(ctx context.Context, id uuid.UUID, params *notes.UpdateNote) (*notes.SavedNote, error) {
+func (nr *NoteRepo) Update(ctx context.Context, id uuid.UUID, params *notes.UpdateNote) (*notes.Note, error) {
 	var (
-		un notes.SavedNote
+		un notes.Note
 	)
 	if err := nr.conn.QueryRow(ctx,
 		updateQueryNote,
