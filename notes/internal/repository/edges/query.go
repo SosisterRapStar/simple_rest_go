@@ -1,0 +1,7 @@
+package edges
+
+var (
+	getGraphQuery = `
+	....
+	`
+)
