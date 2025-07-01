@@ -13,31 +13,34 @@ const (
 	envDev   = "dev"
 )
 
-type Server struct {
-	Address string `yaml:"address" env-required:"true"`
-}
-type Metrics struct {
-	MetricsPort string `yaml:"metrics_port" env-default:":8080"`
-}
+type (
+	Server struct {
+		Host string `yaml:"host" env-default:"0.0.0.0"`
+		Port string `yaml:"port" env-required:"true"`
+	}
+	Metrics struct {
+		MetricsPort string `yaml:"metrics_port" env-default:":8080"`
+	}
 
-type Postgres struct {
-	Url      string `yaml:"url" env-required:"true"`
-	MaxConns int    `yaml:"max_conns" env-default:"10"`
-	MinConns int    `yaml:"min_conns" env-default:"3"`
-}
+	Postgres struct {
+		Url      string `yaml:"url" env-required:"true"`
+		MaxConns int    `yaml:"max_conns" env-default:"10"`
+		MinConns int    `yaml:"min_conns" env-default:"3"`
+	}
 
-type Storage struct {
-	Postgres `yaml:"postgres"`
-}
+	Storage struct {
+		Postgres `yaml:"postgres"`
+	}
 
-type Config struct {
-	Env     string `yaml:"env" env-default:"local"`
-	Server  `yaml:"http_server"`
-	Storage `yaml:"storage"`
-	Metrics `yaml:"metrics"`
-}
+	Config struct {
+		Env     string `yaml:"env" env-default:"local"`
+		Server  `yaml:"http_server"`
+		Storage `yaml:"storage"`
+		Metrics `yaml:"metrics"`
+	}
+)
 
-func MustLoad() *Config {
+func MustLoadConfig() *Config {
 	configPath := os.Getenv("CONFIG_PATH")
 	if configPath == "" {
 		log.Fatal("Config path is not set")
@@ -56,7 +59,9 @@ func MustLoad() *Config {
 	return &cfg
 }
 
-func setupLogger(env string) *slog.Logger {
+// logger also should be passed to functions like a paramater
+// no global loggers now
+func MustSetupLogger(env string) *slog.Logger {
 	var log *slog.Logger
 
 	switch env {
@@ -66,10 +71,4 @@ func setupLogger(env string) *slog.Logger {
 		)
 	}
 	return log
-}
-
-var logger = setupLogger("local")
-
-func GetLogger() *slog.Logger {
-	return logger
 }
