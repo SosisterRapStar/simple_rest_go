@@ -40,7 +40,7 @@ set-deps:
 # LOCAL MIGRATIONS
 MIGRATOR := $(LOCAL_BIN)/sql-migrate
 DB_COMPOSE_FILE := ./deployments/docker_compose_db_only.yml
-MIGRATIONS_DIR := ./internal/schema
+MIGRATIONS_DIR := ./internal/infra/postgres/schema
 
 
 start-db-local: set-local-env
@@ -104,6 +104,13 @@ endif
 lint: 
 	@echo "Start linting"
 	@golangci-lint run
+
+#AD-HOC
+elastic-up:
+	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-elastic.yaml up -d
+elastic-down:
+	@docker compose -f $(DEPLOYMENTS_PACKAGE)/docker-compose-elastic.yaml down -d
+
 
 # From:	Paul Smith
 # Subject:	Re: multiple .PHONY or single .PHONY

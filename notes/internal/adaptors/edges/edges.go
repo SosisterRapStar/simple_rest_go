@@ -18,9 +18,16 @@ func New(c *pgxpool.Conn) *EdgeRepo {
 	}
 }
 
+// not implemented
 func (er *EdgeRepo) GetNotesGraph(ctx context.Context, userId uuid.UUID) (*edges.Graph, error) {
+	return nil, nil
 }
 
+// not implemented
 func (er *EdgeRepo) NewEdge(ctx context.Context, start uuid.UUID, end uuid.UUID, direction edges.Direction) {
+}
+
+// not implemented
+func (er *EdgeRepo) DeleteEdge() {
 
 }
